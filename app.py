@@ -1,6 +1,5 @@
-# You can find this code for Chainlit python streaming here (https://docs.chainlit.io/concepts/streaming/python)
+# app.py
 
-# OpenAI Chat completion
 import os
 from openai import AsyncOpenAI  # importing openai for API usage
 import chainlit as cl  # importing chainlit for our app
@@ -18,10 +17,9 @@ user_template = """{input}
 Think through your response step by step.
 """
 
-
-@cl.on_chat_start  # marks a function that will be executed at the start of a user session
-async def start_chat():
-    settings = {
+# LLM settings
+def get_default_settings():
+    return {
         "model": "gpt-3.5-turbo",
         "temperature": 0,
         "max_tokens": 500,
@@ -30,18 +28,9 @@ async def start_chat():
         "presence_penalty": 0,
     }
 
-    cl.user_session.set("settings", settings)
-
-
-@cl.on_message  # marks a function that should be run each time the chatbot receives a message from a user
-async def main(message: cl.Message):
-    settings = cl.user_session.get("settings")
-
-    client = AsyncOpenAI()
-
-    print(message.content)
-
-    prompt = Prompt(
+# Create prompt object
+def create_prompt(input_text):
+    return Prompt(
         provider=ChatOpenAI.id,
         messages=[
             PromptMessage(
@@ -52,29 +41,38 @@ async def main(message: cl.Message):
             PromptMessage(
                 role="user",
                 template=user_template,
-                formatted=user_template.format(input=message.content),
+                formatted=user_template.format(input=input_text),
             ),
         ],
-        inputs={"input": message.content},
-        settings=settings,
+        inputs={"input": input_text},
+        settings=get_default_settings(),
     )
 
-    print([m.to_openai() for m in prompt.messages])
+# LLM interaction function
+async def get_llm_response(input_text):
+    client = AsyncOpenAI()
+    prompt = create_prompt(input_text)
 
-    msg = cl.Message(content="")
-
-    # Call OpenAI
+    response = ""
     async for stream_resp in await client.chat.completions.create(
-        messages=[m.to_openai() for m in prompt.messages], stream=True, **settings
+        messages=[m.to_openai() for m in prompt.messages],
+        stream=True,
+        **prompt.settings,
     ):
         token = stream_resp.choices[0].delta.content
-        if not token:
-            token = ""
-        await msg.stream_token(token)
+        if token:
+            response += token
 
-    # Update the prompt object with the completion
-    prompt.completion = msg.content
-    msg.prompt = prompt
+    return response
 
-    # Send and close the message stream
+
+@cl.on_chat_start
+async def start_chat():
+    cl.user_session.set("settings", get_default_settings())
+
+
+@cl.on_message
+async def main(message: cl.Message):
+    response = await get_llm_response(message.content)
+    msg = cl.Message(content=response)
     await msg.send()
