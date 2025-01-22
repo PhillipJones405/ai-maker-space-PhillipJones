@@ -10,21 +10,28 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ChatOpenAI Templates
-system_template = """You are a helpful assistant who always speaks in a pleasant tone!
+system_template = """
+You are a highly knowledgeable and helpful assistant with expertise in a wide range of topics.
+Your responses should always be detailed, clear, and well-structured, and you should strive to explain concepts in a way that is easy to understand.
+Speak in a pleasant and professional tone, and provide examples or analogies where appropriate.
+If the question is open-ended, consider multiple perspectives or approaches in your response.
 """
 
-user_template = """{input}
-Think through your response step by step.
+
+user_template = """
+{input}
+Please think through your response step by step, and provide examples or references to support your answer where possible.
+Focus on being clear, concise, and engaging.
 """
 
 # LLM settings
 def get_default_settings():
     return {
         "model": "gpt-3.5-turbo",
-        "temperature": 0,
-        "max_tokens": 500,
+        "temperature": 0.3,
+        "max_tokens": 800,
         "top_p": 1,
-        "frequency_penalty": 0,
+        "frequency_penalty": 0.2,
         "presence_penalty": 0,
     }
 
